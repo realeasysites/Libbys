@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Leads | Libby Septic Service</title>
+<link rel="icon" href="/images/favicon.svg" type="image/svg+xml">
+<style>
+  :root{--g:#2fae3c;--gd:#1c7f29;--k:#0e120e;--line:#dfe7dd;--mist:#f2f6f1;--muted:#5d6a5c;--red:#e5392b}
+  *{box-sizing:border-box}body{margin:0;font-family:Inter,system-ui,sans-serif;background:var(--mist);color:#1d231d;font-size:15px}
+  header{background:var(--k);color:#fff;padding:14px 22px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+  header h1{margin:0;font:900 italic 1.6rem 'Barlow Condensed',Impact,sans-serif;text-transform:uppercase}
+  header h1 span{color:var(--g)}
+  header .sp{flex:1}
+  header a,header button{color:#fff;background:rgba(255,255,255,.1);border:0;padding:8px 14px;border-radius:6px;text-decoration:none;font:inherit;font-weight:600;cursor:pointer}
+  main{max-width:1200px;margin:0 auto;padding:22px}
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:20px}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 16px;cursor:pointer;transition:border-color .2s}
+  .card.active{border-color:var(--g);box-shadow:0 0 0 3px rgba(47,174,60,.15)}
+  .card b{display:block;font-size:1.8rem;line-height:1}.card span{font-size:.8rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;font-weight:600}
+  .card.emerg b{color:var(--red)}
+  .toolbar{display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+  .toolbar input{flex:1;min-width:200px;padding:10px 12px;border:1px solid var(--line);border-radius:8px;font:inherit}
+  .lead{background:#fff;border:1px solid var(--line);border-left:5px solid var(--g);border-radius:10px;padding:16px 18px;margin-bottom:12px;display:grid;grid-template-columns:1fr 260px;gap:18px}
+  .lead.emergency{border-left-color:var(--red)}
+  .lead h3{margin:0 0 4px;font-size:1.1rem}
+  .meta{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 10px}
+  .tag{font-size:.75rem;font-weight:700;padding:3px 8px;border-radius:999px;background:var(--mist);border:1px solid var(--line)}
+  .tag.red{background:#fdecea;color:#a3241a;border-color:#f3b9b3}
+  .msg{white-space:pre-wrap;color:#333;font-size:.92rem;margin:0}
+  .contact a{font-weight:700;color:var(--gd);margin-right:12px}
+  .side select,.side textarea{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:8px;font:inherit;margin-bottom:8px}
+  .side textarea{min-height:70px;resize:vertical}
+  .side .row{display:flex;gap:8px}
+  .side button{flex:1;padding:8px;border:0;border-radius:8px;font-weight:700;cursor:pointer;background:var(--g);color:#fff}
+  .side button.del{flex:none;background:#eee;color:#a3241a}
+  .when{color:var(--muted);font-size:.82rem}
+  .empty{text-align:center;padding:60px 20px;color:var(--muted);background:#fff;border-radius:12px;border:1px dashed var(--line)}
+  @media(max-width:760px){.lead{grid-template-columns:1fr}}
+</style></head>
+<body>
+<header>
+  <h1>Libby <span>Leads</span></h1>
+  <div class="sp"></div>
+  <a href="/api/admin/leads.csv">Export CSV</a>
+  <a href="/" target="_blank">View site</a>
+  <form method="post" action="/admin/logout" style="margin:0"><button type="submit">Log out</button></form>
+</header>
+<main>
+  <div class="cards" id="cards"></div>
+  <div class="toolbar"><input id="q" placeholder="Search name, phone, town, message…"></div>
+  <div id="list"></div>
+</main>
+<script>
+(function(){
+  var state={leads:[],stats:{},statuses:[],filter:'',q:''};
+  var labels={new:'New',contacted:'Contacted',scheduled:'Scheduled',completed:'Completed',closed:'Closed'};
+  var urg={emergency:'🚨 Emergency','this-week':'This week',flexible:'Flexible'};
+  function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+  function load(){fetch('/api/admin/leads').then(function(r){if(r.status===401){location='/admin/login';return}return r.json()}).then(function(d){if(!d)return;state.leads=d.leads;state.stats=d.stats;state.statuses=d.statuses;render()})}
+  function render(){
+    var s=state.stats,c='';
+    c+=card('', 'All', s.total);
+    state.statuses.forEach(function(k){c+=card(k,labels[k],s[k])});
+    c+='<div class="card emerg" data-f="__emerg"><b>'+(s.emergency_open||0)+'</b><span>Open emergencies</span></div>';
+    document.getElementById('cards').innerHTML=c;
+    document.querySelectorAll('.card').forEach(function(el){el.onclick=function(){state.filter=el.getAttribute('data-f');render()}});
+    var q=state.q.toLowerCase();
+    var rows=state.leads.filter(function(l){
+      if(state.filter==='__emerg'){if(!(l.urgency==='emergency'&&(l.status==='new'||l.status==='contacted')))return false}
+      else if(state.filter&&l.status!==state.filter)return false;
+      if(q&&[l.name,l.phone,l.email,l.town,l.message,l.service].join(' ').toLowerCase().indexOf(q)<0)return false;
+      return true});
+    var list=document.getElementById('list');
+    if(!rows.length){list.innerHTML='<div class="empty">No leads here yet. New website requests will show up automatically.</div>';return}
+    list.innerHTML=rows.map(function(l){
+      var opts=state.statuses.map(function(k){return '<option value="'+k+'"'+(k===l.status?' selected':'')+'>'+labels[k]+'</option>'}).join('');
+      return '<div class="lead '+(l.urgency==='emergency'?'emergency':'')+'" data-id="'+l.id+'">'+
+        '<div><h3>'+esc(l.name)+'</h3><div class="when">#'+l.id+' · '+esc(new Date(l.created_at.replace(' ','T')+'Z').toLocaleString())+'</div>'+
+        '<div class="meta"><span class="tag '+(l.urgency==='emergency'?'red':'')+'">'+esc(urg[l.urgency]||l.urgency)+'</span><span class="tag">'+esc(l.service)+'</span>'+(l.town?'<span class="tag">📍 '+esc(l.town)+'</span>':'')+'<span class="tag">Last pumped: '+esc(l.last_pumped)+'</span></div>'+
+        '<div class="contact"><a href="tel:'+esc(l.phone)+'">📞 '+esc(l.phone)+'</a>'+(l.email?'<a href="mailto:'+esc(l.email)+'">✉️ '+esc(l.email)+'</a>':'')+'</div>'+
+        (l.message?'<p class="msg">'+esc(l.message)+'</p>':'')+'</div>'+
+        '<div class="side"><select class="st">'+opts+'</select><textarea class="nt" placeholder="Internal notes…">'+esc(l.notes||'')+'</textarea>'+
+        '<div class="row"><button class="save">Save</button><button class="del" title="Delete lead">Delete</button></div></div></div>'}).join('');
+    list.querySelectorAll('.lead').forEach(function(el){
+      var id=el.getAttribute('data-id');
+      el.querySelector('.save').onclick=function(){
+        fetch('/api/admin/leads/'+id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:el.querySelector('.st').value,notes:el.querySelector('.nt').value})}).then(load)};
+      el.querySelector('.del').onclick=function(){if(confirm('Delete this lead permanently?'))fetch('/api/admin/leads/'+id,{method:'DELETE'}).then(load)};
+    });
+  }
+  function card(f,label,n){return '<div class="card'+(state.filter===f?' active':'')+'" data-f="'+f+'"><b>'+(n||0)+'</b><span>'+label+'</span></div>'}
+  document.getElementById('q').oninput=function(e){state.q=e.target.value;render()};
+  load(); setInterval(load,60000);
+})();
+</script>
+</body></html>
