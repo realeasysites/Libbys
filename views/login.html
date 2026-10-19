@@ -19,9 +19,8 @@
   <form class="box" method="post" action="/admin/login">
     <h1>Lead Dashboard</h1>
     <p>Libby Septic Service Excavation &amp; Trucking</p>
-    <div class="err" id="err">Wrong username or password.</div>
-    <label for="u">Username</label><input id="u" name="username" autocomplete="username" required>
-    <label for="p">Password</label><input id="p" name="password" type="password" autocomplete="current-password" required>
+    <div class="err" id="err">Wrong password.</div>
+    <label for="p">Password</label><input id="p" name="password" type="password" autofocus autocomplete="current-password" required>
     <button type="submit">Sign in</button>
   </form>
   <script>if(location.search.indexOf('error')>-1)document.getElementById('err').style.display='block';</script>
